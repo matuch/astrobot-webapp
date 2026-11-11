@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Натальная карта — анкета</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg0: #0a0a1e;
+    --bg1: #161638;
+    --gold: #d4af37;
+    --gold-dim: rgba(212, 175, 55, .35);
+    --text: #ece9f7;
+    --muted: #9a94b8;
+    --card: rgba(255, 255, 255, .045);
+    --error: #ff7a90;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    min-height: 100vh;
+    min-height: 100dvh;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    color: var(--text);
+    background:
+      radial-gradient(1px 1px at 12% 22%, #fff8 50%, transparent 51%),
+      radial-gradient(1px 1px at 78% 12%, #fff6 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 55% 38%, #fff9 50%, transparent 51%),
+      radial-gradient(1px 1px at 88% 55%, #fff5 50%, transparent 51%),
+      radial-gradient(1px 1px at 30% 68%, #fff7 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 66% 82%, #fff8 50%, transparent 51%),
+      radial-gradient(1px 1px at 8% 88%, #fff5 50%, transparent 51%),
+      radial-gradient(ellipse 90% 60% at 50% -10%, #2c2160 0%, transparent 60%),
+      linear-gradient(165deg, var(--bg1) 0%, var(--bg0) 70%);
+    display: flex;
+    justify-content: center;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  .card {
+    width: 100%;
+    max-width: 420px;
+    align-self: center;
+    background: var(--card);
+    border: 1px solid rgba(212, 175, 55, .18);
+    border-radius: 24px;
+    padding: 28px 22px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .06);
+  }
+  .glyph { text-align: center; font-size: 34px; color: var(--gold); text-shadow: 0 0 22px var(--gold-dim); }
+  h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 500;
+    font-size: 22px;
+    text-align: center;
+    letter-spacing: .04em;
+    margin: 10px 0 4px;
+  }
+  .subtitle { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+
+  .dots { display: flex; justify-content: center; gap: 8px; margin-bottom: 24px; }
+  .dot {
+    width: 26px; height: 4px; border-radius: 2px;
+    background: rgba(255, 255, 255, .12);
+    transition: background .3s;
+  }
+  .dot.active { background: var(--gold); box-shadow: 0 0 10px var(--gold-dim); }
+
+  .step { display: none; animation: fade .25s ease; }
+  .step.visible { display: block; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  label.field-label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+  label.field-label .planet { color: var(--gold); margin-right: 6px; }
+
+  input[type="text"], input[type="date"], input[type="time"] {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 17px; /* no iOS zoom on focus */
+    color: var(--text);
+    background: rgba(0, 0, 0, .28);
+    border: 1px solid rgba(255, 255, 255, .12);
+    border-radius: 14px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    color-scheme: dark;
+  }
+  input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212, 175, 55, .15); }
+  input:disabled { opacity: .35; }
+  input::placeholder { color: var(--muted); }
+
+  .hint { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 15px; }
+  .hint.error { color: var(--error); }
+
+  .checkbox-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 14px; font-size: 14px; color: var(--muted);
+    cursor: pointer; user-select: none;
+  }
+  .checkbox-row input { width: 18px; height: 18px; accent-color: var(--gold); }
+
+  .suggestions {
+    margin-top: 6px;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(10, 10, 30, .92);
+    display: none;
+  }
+  .suggestions.open { display: block; }
+  .suggestion {
+    padding: 12px 16px; font-size: 15px; cursor: pointer;
+    border-bottom: 1px solid rgba(255, 255, 255, .05);
+  }
+  .suggestion:last-child { border-bottom: none; }
+  .suggestion:active, .suggestion:hover { background: rgba(212, 175, 55, .12); }
+  .suggestion small { display: block; color: var(--muted); font-size: 12px; }
+
+  .nav { display: flex; gap: 10px; margin-top: 26px; }
+  button {
+    flex: 1;
+    padding: 15px;
+    font-size: 16px;
+    font-weight: 600;
+    border: none;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: transform .1s, box-shadow .2s;
+  }
+  button:active { transform: scale(.97); }
+  .btn-primary {
+    color: #14102a;
+    background: linear-gradient(135deg, #e8c766, var(--gold) 55%, #a8842a);
+    box-shadow: 0 6px 22px rgba(212, 175, 55, .28);
+  }
+  .btn-ghost { flex: 0 0 92px; color: var(--muted); background: rgba(255, 255, 255, .07); }
+
+  .done { text-align: center; padding: 30px 0 10px; }
+  .done .glyph { font-size: 46px; }
+  .done p { color: var(--muted); margin-top: 12px; font-size: 14px; line-height: 1.5; }
+  pre.debug {
+    margin-top: 14px; padding: 12px; font-size: 11px; text-align: left;
+    background: rgba(0,0,0,.4); border-radius: 10px; overflow-x: auto; color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="glyph">☉</div>
+  <h1>Натальная карта</h1>
+  <p class="subtitle">Четыре шага — и звёзды расскажут о вас</p>
+
+  <div class="dots" id="dots">
+    <div class="dot active"></div><div class="dot"></div><div class="dot"></div><div class="dot"></div>
+  </div>
+
+  <form id="wizard" novalidate>
+    <!-- Шаг 1: имя -->
+    <section class="step visible" data-step="0">
+      <label class="field-label" for="name"><span class="planet">♀</span>Ваше имя</label>
+      <input type="text" id="name" autocomplete="name" placeholder="Например, Анна" maxlength="60">
+      <p class="hint" id="hint-name"></p>
+    </section>
+
+    <!-- Шаг 2: дата рождения -->
+    <section class="step" data-step="1">
+      <label class="field-label" for="birthdate"><span class="planet">☽</span>Дата рождения</label>
+      <!-- ponytail: нативный datepicker — на мобильных это и есть удобный календарь, 0 КБ -->
+      <input type="date" id="birthdate" min="1900-01-01">
+      <p class="hint" id="hint-date"></p>
+    </section>
+
+    <!-- Шаг 3: время рождения -->
+    <section class="step" data-step="2">
+      <label class="field-label" for="birthtime"><span class="planet">☿</span>Время рождения</label>
+      <!-- ponytail: нативный timepicker — на iOS/Android это «барабан» из коробки -->
+      <input type="time" id="birthtime" value="12:00">
+      <label class="checkbox-row">
+        <input type="checkbox" id="time-unknown">
+        Не знаю точное время
+      </label>
+      <p class="hint" id="hint-time">Если время неизвестно, карта строится на 12:00 — позиции домов будут приблизительными.</p>
+    </section>
+
+    <!-- Шаг 4: город -->
+    <section class="step" data-step="3">
+      <label class="field-label" for="city"><span class="planet">♁</span>Город рождения</label>
+      <input type="text" id="city" autocomplete="off" placeholder="Начните вводить город…" maxlength="100">
+      <div class="suggestions" id="suggestions"></div>
+      <p class="hint" id="hint-city"></p>
+    </section>
+
+    <div class="nav">
+      <button type="button" class="btn-ghost" id="back" hidden>Назад</button>
+      <button type="button" class="btn-primary" id="next">Далее</button>
+    </div>
+  </form>
+
+  <div class="done" id="done" hidden>
+    <div class="glyph">✦</div>
+    <p id="done-text">Анкета отправлена.<br>Возвращайтесь в чат — карта уже строится.</p>
+    <pre class="debug" id="debug" hidden></pre>
+  </div>
+</div>
+
+<script>
+"use strict";
+
+/* ---------- Определение платформы ---------- */
+const tg = window.Telegram && window.Telegram.WebApp;
+let maxApp = null;
+// URL приёмника для MAX (у Bridge нет аналога tg.sendData). Заполняется при деплое.
+const MAX_ENDPOINT = "";
+
+const platform = tg && tg.initData ? "telegram" : "browser"; // в браузере initData пустой
+if (platform === "telegram") {
+  tg.ready();
+  tg.expand();
+} else {
+  // MAX Bridge создаёт window.WebApp сам; в браузере его нет.
+  const s = document.createElement("script");
+  s.src = "https://st.max.ru/js/max-web-app.js";
+  s.onload = () => { if (window.WebApp && window.WebApp.initData) maxApp = window.WebApp; };
+  document.head.appendChild(s);
+}
+
+/* ---------- Элементы ---------- */
+const steps = [...document.querySelectorAll(".step")];
+const dots = [...document.querySelectorAll("#dots .dot")];
+const backBtn = document.getElementById("back");
+const nextBtn = document.getElementById("next");
+const nameEl = document.getElementById("name");
+const dateEl = document.getElementById("birthdate");
+const timeEl = document.getElementById("birthtime");
+const timeUnknownEl = document.getElementById("time-unknown");
+const cityEl = document.getElementById("city");
+const suggEl = document.getElementById("suggestions");
+
+dateEl.max = new Date().toISOString().slice(0, 10);
+
+let current = 0;
+
+/* ---------- Навигация по шагам ---------- */
+function showStep(n) {
+  current = n;
+  steps.forEach((s, i) => s.classList.toggle("visible", i === n));
+  dots.forEach((d, i) => d.classList.toggle("active", i <= n));
+  backBtn.hidden = n === 0;
+  nextBtn.textContent = n === steps.length - 1 ? "✨ Построить натальную карту" : "Далее";
+}
+
+function setHint(id, msg, isError) {
+  const el = document.getElementById(id);
+  el.textContent = msg;
+  el.classList.toggle("error", !!isError);
+  if (!isError && !msg) el.textContent = "";
+}
+
+function validateStep(n) {
+  if (n === 0) {
+    const v = nameEl.value.trim();
+    if (!/^[А-Яа-яЁёA-Za-z\-' ]{2,}$/.test(v)) {
+      setHint("hint-name", "Введите имя (минимум 2 буквы).", true);
+      return false;
+    }
+    setHint("hint-name", "");
+    return true;
+  }
+  if (n === 1) {
+    const v = dateEl.value;
+    const ok = v && v >= "1900-01-01" && v <= dateEl.max;
+    setHint("hint-date", ok ? "" : "Выберите дату рождения.", !ok);
+    return ok;
+  }
+  if (n === 2) {
+    const ok = timeUnknownEl.checked || !!timeEl.value;
+    setHint("hint-time", ok ? "" : "Укажите время или отметьте «Не знаю точное время».", !ok);
+    return ok;
+  }
+  if (n === 3) {
+    const ok = cityEl.value.trim().length >= 2;
+    setHint("hint-city", ok ? "" : "Введите город рождения.", !ok);
+    return ok;
+  }
+  return true;
+}
+
+backBtn.addEventListener("click", () => showStep(Math.max(0, current - 1)));
+nextBtn.addEventListener("click", () => {
+  if (!validateStep(current)) return;
+  if (current < steps.length - 1) showStep(current + 1);
+  else submit();
+});
+
+/* ---------- «Не знаю время» ---------- */
+timeUnknownEl.addEventListener("change", () => {
+  timeEl.disabled = timeUnknownEl.checked;
+  if (timeUnknownEl.checked) timeEl.value = "12:00";
+  setHint("hint-time", "");
+});
+
+/* ---------- Автокомплит городов (GeoNames, опционально) ---------- */
+const GEONAMES_USER = new URLSearchParams(location.search).get("gn") || "";
+let suggTimer = null;
+let suggAbort = null;
+
+cityEl.addEventListener("input", () => {
+  suggEl.classList.remove("open");
+  clearTimeout(suggTimer);
+  const q = cityEl.value.trim();
+  if (!GEONAMES_USER || q.length < 2) return;
+  suggTimer = setTimeout(() => fetchCities(q), 300);
+});
+
+async function fetchCities(q) {
+  if (suggAbort) suggAbort.abort();
+  suggAbort = new AbortController();
+  try {
+    const url = "https://secure.geonames.org/searchJSON?featureClass=P&orderby=population"
+      + "&maxRows=5&lang=ru&username=" + encodeURIComponent(GEONAMES_USER)
+      + "&name_startsWith=" + encodeURIComponent(q);
+    const res = await fetch(url, { signal: suggAbort.signal });
+    const data = await res.json();
+    renderSuggestions(data.geonames || []);
+  } catch (e) {
+    if (e.name !== "AbortError") renderSuggestions([]);
+  }
+}
+
+function renderSuggestions(items) {
+  suggEl.innerHTML = "";
+  if (!items.length) { suggEl.classList.remove("open"); return; }
+  for (const item of items) {
+    const div = document.createElement("div");
+    div.className = "suggestion";
+    const region = [item.adminName1, item.countryName].filter(Boolean).join(", ");
+    div.innerHTML = "";
+    div.appendChild(document.createTextNode(item.name));
+    const small = document.createElement("small");
+    small.textContent = region;
+    div.appendChild(small);
+    div.addEventListener("click", () => {
+      cityEl.value = region ? item.name + ", " + item.countryName : item.name;
+      suggEl.classList.remove("open");
+      setHint("hint-city", "");
+    });
+    suggEl.appendChild(div);
+  }
+  suggEl.classList.add("open");
+}
+
+document.addEventListener("click", (e) => {
+  if (!suggEl.contains(e.target) && e.target !== cityEl) suggEl.classList.remove("open");
+});
+
+/* ---------- Отправка ---------- */
+function collectPayload() {
+  const timeUncertain = timeUnknownEl.checked;
+  return {
+    v: 1,
+    kind: "astro_profile",
+    full_name: nameEl.value.trim(),
+    birth_date: dateEl.value, // YYYY-MM-DD
+    birth_time: timeUncertain ? null : timeEl.value,
+    time_uncertain: timeUncertain,
+    birth_city: cityEl.value.trim(),
+  };
+}
+
+function showDone(debugPayload) {
+  document.getElementById("wizard").hidden = true;
+  document.getElementById("dots").hidden = true;
+  document.querySelector(".subtitle").hidden = true;
+  const done = document.getElementById("done");
+  done.hidden = false;
+  if (debugPayload) {
+    document.getElementById("done-text").textContent = "Режим браузера — данные не отправлены:";
+    const dbg = document.getElementById("debug");
+    dbg.hidden = false;
+    dbg.textContent = JSON.stringify(debugPayload, null, 2);
+  }
+}
+
+function showError(msg) {
+  setHint("hint-city", msg, true);
+}
+
+function submit() {
+  const payload = collectPayload();
+  const json = JSON.stringify(payload);
+
+  if (platform === "telegram") {
+    tg.sendData(json); // Telegram сам закроет мини-приложение
+    return;
+  }
+  if (maxApp) {
+    if (!MAX_ENDPOINT) { showError("Канал отправки для MAX ещё настраивается."); return; }
+    nextBtn.disabled = true;
+    fetch(MAX_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ initData: maxApp.initData, profile: payload }),
+    })
+      .then((r) => { if (!r.ok) throw new Error(); showDone(); })
+      .catch(() => { showError("Не удалось отправить. Попробуйте ещё раз."); nextBtn.disabled = false; });
+    return;
+  }
+  showDone(payload); // обычный браузер — отладка
+}
+
+showStep(0);
+</script>
+</body>
+</html>
