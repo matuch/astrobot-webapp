@@ -75,9 +75,9 @@
   label.field-label { display: block; font-size: 14px; color: var(--muted); margin-bottom: 8px; }
   label.field-label .planet { color: var(--gold); margin-right: 6px; }
 
-  input[type="text"], input[type="date"], input[type="time"] {
+  input[type="text"], select {
     width: 100%;
-    min-width: 0; /* у date/time есть встроенная минимальная ширина в десктопных webview */
+    min-width: 0;
     display: block;
     padding: 14px 16px;
     font-size: 17px; /* no iOS zoom on focus */
@@ -89,8 +89,8 @@
     transition: border-color .2s, box-shadow .2s;
     color-scheme: dark;
   }
-  input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212, 175, 55, .15); }
-  input:disabled { opacity: .35; }
+  input:focus, select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(212, 175, 55, .15); }
+  input:disabled, select:disabled { opacity: .35; }
   input::placeholder { color: var(--muted); }
 
   .hint { font-size: 12px; color: var(--muted); margin-top: 8px; min-height: 15px; }
@@ -102,6 +102,10 @@
     cursor: pointer; user-select: none;
   }
   .checkbox-row input { width: 18px; height: 18px; accent-color: var(--gold); }
+
+  .picker-row { display: flex; gap: 8px; align-items: center; }
+  .picker-row select { flex: 1; min-width: 0; }
+  .picker-sep { color: var(--gold); font-size: 22px; }
 
   .suggestions {
     margin-top: 6px;
@@ -168,17 +172,24 @@
 
     <!-- Шаг 2: дата рождения -->
     <section class="step" data-step="1">
-      <label class="field-label" for="birthdate"><span class="planet">☽</span>Дата рождения</label>
-      <!-- ponytail: нативный datepicker — на мобильных это и есть удобный календарь, 0 КБ -->
-      <input type="date" id="birthdate" min="1900-01-01">
+      <label class="field-label"><span class="planet">☽</span>Дата рождения</label>
+      <!-- ponytail: нативный datepicker в вебвью Telegram Desktop бажит — поэтому селекты -->
+      <div class="picker-row">
+        <select id="birth-day" aria-label="День"></select>
+        <select id="birth-month" aria-label="Месяц"></select>
+        <select id="birth-year" aria-label="Год"></select>
+      </div>
       <p class="hint" id="hint-date"></p>
     </section>
 
     <!-- Шаг 3: время рождения -->
     <section class="step" data-step="2">
-      <label class="field-label" for="birthtime"><span class="planet">☿</span>Время рождения</label>
-      <!-- ponytail: нативный timepicker — на iOS/Android это «барабан» из коробки -->
-      <input type="time" id="birthtime" value="12:00">
+      <label class="field-label"><span class="planet">☿</span>Время рождения</label>
+      <div class="picker-row">
+        <select id="birth-hour" aria-label="Час"></select>
+        <span class="picker-sep">:</span>
+        <select id="birth-minute" aria-label="Минута"></select>
+      </div>
       <label class="checkbox-row">
         <input type="checkbox" id="time-unknown">
         Не знаю точное время
@@ -235,13 +246,65 @@ const dots = [...document.querySelectorAll("#dots .dot")];
 const backBtn = document.getElementById("back");
 const nextBtn = document.getElementById("next");
 const nameEl = document.getElementById("name");
-const dateEl = document.getElementById("birthdate");
-const timeEl = document.getElementById("birthtime");
+const dayEl = document.getElementById("birth-day");
+const monthEl = document.getElementById("birth-month");
+const yearEl = document.getElementById("birth-year");
+const hourEl = document.getElementById("birth-hour");
+const minuteEl = document.getElementById("birth-minute");
 const timeUnknownEl = document.getElementById("time-unknown");
 const cityEl = document.getElementById("city");
 const suggEl = document.getElementById("suggestions");
 
-dateEl.max = new Date().toISOString().slice(0, 10);
+/* ---------- Наполнение селектов ---------- */
+const MONTHS_RU = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+
+function fillSelect(el, values, placeholder) {
+  el.innerHTML = "";
+  const ph = document.createElement("option");
+  ph.value = "";
+  ph.textContent = placeholder;
+  ph.disabled = true;
+  ph.selected = true;
+  el.appendChild(ph);
+  for (const [v, label] of values) {
+    const o = document.createElement("option");
+    o.value = v;
+    o.textContent = label;
+    el.appendChild(o);
+  }
+}
+
+const nowYear = new Date().getFullYear();
+fillSelect(dayEl, Array.from({length: 31}, (_, i) => [String(i + 1), String(i + 1)]), "День");
+fillSelect(monthEl, MONTHS_RU.map((m, i) => [String(i + 1).padStart(2, "0"), m]), "Месяц");
+fillSelect(yearEl, Array.from({length: nowYear - 1900 + 1}, (_, i) => [String(nowYear - i), String(nowYear - i)]), "Год");
+fillSelect(hourEl, Array.from({length: 24}, (_, i) => [String(i).padStart(2, "0"), String(i).padStart(2, "0")]), "—");
+fillSelect(minuteEl, Array.from({length: 60}, (_, i) => [String(i).padStart(2, "0"), String(i).padStart(2, "0")]), "—");
+hourEl.value = "12";
+minuteEl.value = "00";
+
+function daysInMonth(year, month) {
+  return new Date(year, month, 0).getDate(); // month: 1-12
+}
+
+function clampDay() {
+  const prev = dayEl.value;
+  const y = Number(yearEl.value) || 2000;
+  const m = Number(monthEl.value) || 1;
+  const max = daysInMonth(y, m);
+  while (dayEl.options.length - 1 > max) dayEl.remove(dayEl.options.length - 1);
+  while (dayEl.options.length - 1 < max) {
+    const d = dayEl.options.length; // учитывая placeholder
+    const o = document.createElement("option");
+    o.value = String(d);
+    o.textContent = String(d);
+    dayEl.appendChild(o);
+  }
+  if (!prev) return;
+  dayEl.value = Number(prev) <= max ? prev : String(max); // 29 февраля -> 28 в невисокосном
+}
+monthEl.addEventListener("change", clampDay);
+yearEl.addEventListener("change", clampDay);
 
 let current = 0;
 
@@ -272,13 +335,12 @@ function validateStep(n) {
     return true;
   }
   if (n === 1) {
-    const v = dateEl.value;
-    const ok = v && v >= "1900-01-01" && v <= dateEl.max;
-    setHint("hint-date", ok ? "" : "Выберите дату рождения.", !ok);
-    return ok;
+    const ok = dayEl.value && monthEl.value && yearEl.value;
+    setHint("hint-date", ok ? "" : "Выберите день, месяц и год.", !ok);
+    return !!ok;
   }
   if (n === 2) {
-    const ok = timeUnknownEl.checked || !!timeEl.value;
+    const ok = timeUnknownEl.checked || (hourEl.value !== "" && minuteEl.value !== "");
     setHint("hint-time", ok ? "" : "Укажите время или отметьте «Не знаю точное время».", !ok);
     return ok;
   }
@@ -299,8 +361,9 @@ nextBtn.addEventListener("click", () => {
 
 /* ---------- «Не знаю время» ---------- */
 timeUnknownEl.addEventListener("change", () => {
-  timeEl.disabled = timeUnknownEl.checked;
-  if (timeUnknownEl.checked) timeEl.value = "12:00";
+  hourEl.disabled = timeUnknownEl.checked;
+  minuteEl.disabled = timeUnknownEl.checked;
+  if (timeUnknownEl.checked) { hourEl.value = "12"; minuteEl.value = "00"; }
   setHint("hint-time", "");
 });
 
@@ -365,8 +428,8 @@ function collectPayload() {
     v: 1,
     kind: "astro_profile",
     full_name: nameEl.value.trim(),
-    birth_date: dateEl.value, // YYYY-MM-DD
-    birth_time: timeUncertain ? null : timeEl.value,
+    birth_date: `${yearEl.value}-${monthEl.value}-${String(dayEl.value).padStart(2, "0")}`, // YYYY-MM-DD
+    birth_time: timeUncertain ? null : `${hourEl.value}:${minuteEl.value}`,
     time_uncertain: timeUncertain,
     birth_city: cityEl.value.trim(),
   };
@@ -415,6 +478,9 @@ function submit() {
     return;
   }
   showDone(payload); // обычный браузер — отладка
+  document.getElementById("debug").textContent +=
+    "\n\n— диагностика —\nhash: " + (location.hash ? location.hash.slice(0, 40) : "(пусто)") +
+    "\nua: " + navigator.userAgent;
 }
 
 showStep(0);
