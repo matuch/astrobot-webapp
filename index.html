@@ -216,15 +216,18 @@
     <p id="done-text">Анкета отправлена.<br>Возвращайтесь в чат — карта уже строится.</p>
     <pre class="debug" id="debug" hidden></pre>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v4</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v5</p>
 </div>
 
 <script>
 "use strict";
 
 /* ---------- Определение платформы ---------- */
-// Telegram всегда добавляет #tgWebAppData= в URL — надёжнее, чем наличие скрипта
-const isTelegram = location.hash.includes("tgWebAppData=");
+// ponytail: на iOS reply-keyboard webapp получает в hash только tgWebAppPlatform,
+// tgWebAppData там может не быть — поэтому детектим по любому признаку
+const isTelegram = location.hash.includes("tgWebAppData=")
+  || location.hash.includes("tgWebAppPlatform=")
+  || !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData);
 const tg = window.Telegram && window.Telegram.WebApp;
 let maxApp = null;
 // URL приёмника для MAX (у Bridge нет аналога tg.sendData). Заполняется при деплое.
