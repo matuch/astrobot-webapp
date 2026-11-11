@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Натальная карта — анкета</title>
-<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script src="telegram-web-app.js"></script> <!-- локальная копия: telegram.org может не открыться в вебвью -->
 <style>
   :root {
     --bg0: #0a0a1e;
@@ -77,6 +77,8 @@
 
   input[type="text"], input[type="date"], input[type="time"] {
     width: 100%;
+    min-width: 0; /* у date/time есть встроенная минимальная ширина в десктопных webview */
+    display: block;
     padding: 14px 16px;
     font-size: 17px; /* no iOS zoom on focus */
     color: var(--text);
@@ -209,16 +211,17 @@
 "use strict";
 
 /* ---------- Определение платформы ---------- */
+// Telegram всегда добавляет #tgWebAppData= в URL — надёжнее, чем наличие скрипта
+const isTelegram = location.hash.includes("tgWebAppData=");
 const tg = window.Telegram && window.Telegram.WebApp;
 let maxApp = null;
 // URL приёмника для MAX (у Bridge нет аналога tg.sendData). Заполняется при деплое.
 const MAX_ENDPOINT = "";
 
-const platform = tg && tg.initData ? "telegram" : "browser"; // в браузере initData пустой
-if (platform === "telegram") {
+if (isTelegram && tg) {
   tg.ready();
   tg.expand();
-} else {
+} else if (!isTelegram) {
   // MAX Bridge создаёт window.WebApp сам; в браузере его нет.
   const s = document.createElement("script");
   s.src = "https://st.max.ru/js/max-web-app.js";
@@ -391,8 +394,12 @@ function submit() {
   const payload = collectPayload();
   const json = JSON.stringify(payload);
 
-  if (platform === "telegram") {
-    tg.sendData(json); // Telegram сам закроет мини-приложение
+  if (isTelegram) {
+    if (tg && tg.sendData) {
+      tg.sendData(json); // Telegram сам закроет мини-приложение
+    } else {
+      showError("Не удалось связаться с Telegram. Закройте анкету и откройте заново через /anketa.");
+    }
     return;
   }
   if (maxApp) {
