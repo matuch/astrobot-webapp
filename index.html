@@ -149,6 +149,10 @@
   .trio small { color: var(--muted); font-size: 11px; letter-spacing: 1px; }
   .interp { font-size: 15px; line-height: 1.65; white-space: pre-wrap; }
   .interp b { color: var(--gold); }
+  .raw-chart { margin-top: 18px; font-size: 13px; color: var(--muted); }
+  .raw-chart summary { cursor: pointer; color: var(--gold); }
+  .raw-chart pre { white-space: pre-wrap; font-size: 11.5px; line-height: 1.5; }
+  [hidden] { display: none !important; } /* вебвью iOS иногда игнорит hidden без этого */
 
   .done { text-align: center; padding: 30px 0 10px; }
   .done .glyph { font-size: 46px; }
@@ -236,9 +240,13 @@
         <div>↑ <b id="r-asc"></b><small>Асцендент</small></div>
       </div>
       <div class="interp" id="r-text"></div>
+      <details class="raw-chart">
+        <summary>Показать саму карту (планеты, дома, аспекты)</summary>
+        <pre id="r-report"></pre>
+      </details>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v8</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v9</p>
 </div>
 
 <script>
@@ -549,6 +557,8 @@ if (viewToken) {
     });
 } else if (isTelegram && tg && tg.initData) {
   // ponytail: menu-кнопка/повторный заход — по initData узнаём юзера: есть профиль → сразу результат
+  showResultMode(); // не мельтешим пустой формой, пока проверяем
+  document.getElementById("result-status").textContent = "Загрузка…";
   fetch(API_BASE + "/me", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -556,14 +566,22 @@ if (viewToken) {
   })
     .then(async (r) => {
       if (r.status === 404) {
+        // профиля нет — показываем форму
+        document.getElementById("result").hidden = true;
+        document.getElementById("wizard").hidden = false;
+        document.getElementById("dots").hidden = false;
+        document.querySelector(".subtitle").hidden = false;
+        document.querySelector("h1").hidden = false;
         const firstName = tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name;
         if (firstName) nameEl.value = firstName;
-        return; // профиля нет — остаёмся на форме
+        return;
       }
       if (!r.ok) return;
       renderResult(await r.json());
     })
-    .catch(() => {});
+    .catch(() => {
+      document.getElementById("result-status").textContent = "Нет связи с сервером. Попробуйте позже.";
+    });
 }
 
 function showResultMode() {
@@ -581,6 +599,7 @@ function renderResult(data) {
   document.getElementById("r-moon").textContent = data.big_three.moon;
   document.getElementById("r-asc").textContent = data.big_three.ascendant;
   document.getElementById("r-text").innerHTML = mdLite(data.interpretation);
+  document.getElementById("r-report").textContent = data.report || "";
   document.getElementById("result-status").hidden = true;
   document.getElementById("result-content").hidden = false;
 }
