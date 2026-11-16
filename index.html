@@ -323,7 +323,7 @@
       <button type="button" class="btn-ghost" id="tarot-back" data-home>← Назад</button>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v12</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v13</p>
 </div>
 
 <script>
@@ -754,12 +754,16 @@ document.getElementById("tarot-go").addEventListener("click", () => {
   const goBtn = document.getElementById("tarot-go");
   goBtn.disabled = true;
   goBtn.textContent = "Астра тасует…";
+  const ctrl = new AbortController();
+  const watchdog = setTimeout(() => ctrl.abort(), 45000); // ponytail: без таймаута iOS-webview может висеть молча
   fetch(API_BASE + "/tarot", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ initData: tg ? tg.initData : "", question, slot: tarotSlot }),
+    signal: ctrl.signal,
   })
     .then(async (r) => {
+      clearTimeout(watchdog);
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "fail");
       const reveal = document.getElementById("tarot-reveal");
@@ -773,6 +777,7 @@ document.getElementById("tarot-go").addEventListener("click", () => {
       goBtn.hidden = true;
     })
     .catch(() => {
+      clearTimeout(watchdog);
       goBtn.textContent = "Не вышло — попробуйте ещё раз";
       goBtn.disabled = false;
     });
