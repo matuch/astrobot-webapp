@@ -152,6 +152,19 @@
   .raw-chart { margin-top: 18px; font-size: 13px; color: var(--muted); }
   .raw-chart summary { cursor: pointer; color: var(--gold); }
   .raw-chart pre { white-space: pre-wrap; font-size: 11.5px; line-height: 1.5; }
+  .tarot-cards { display: flex; gap: 12px; justify-content: center; margin: 14px 0; }
+  .tarot-card {
+    flex: 1; max-width: 104px; aspect-ratio: 2/3.2;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 30px; color: var(--gold-dim);
+    background: linear-gradient(160deg, #241d52, #141033);
+    border: 1px solid rgba(212,175,55,.35); border-radius: 14px;
+    cursor: pointer; transition: transform .15s, box-shadow .2s;
+  }
+  .tarot-card.selected { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 18px var(--gold-dim); transform: translateY(-4px); }
+  .tarot-reveal { text-align: center; margin: 12px 0; font-size: 18px; }
+  .tarot-reveal .emoji { font-size: 44px; display: block; }
+  .tarot-reveal .flipped { display: inline-block; transform: scaleY(-1); }
   [hidden] { display: none !important; } /* вебвью iOS иногда игнорит hidden без этого */
 
   .done { text-align: center; padding: 30px 0 10px; }
@@ -244,9 +257,25 @@
         <summary>Показать саму карту (планеты, дома, аспекты)</summary>
         <pre id="r-report"></pre>
       </details>
+
+      <!-- Таро дня -->
+      <button type="button" class="btn-primary" id="tarot-open" style="margin-top:20px">🃏 Расклад таро на день</button>
+      <div id="tarot-flow" hidden>
+        <label class="field-label" style="margin-top:18px" for="tarot-question">Ваш вопрос на сегодня</label>
+        <input type="text" id="tarot-question" maxlength="500" placeholder="Например: что важно учесть сегодня на работе?">
+        <p class="hint">Выберите одну карту:</p>
+        <div class="tarot-cards">
+          <div class="tarot-card" data-slot="0">✦</div>
+          <div class="tarot-card" data-slot="1">✦</div>
+          <div class="tarot-card" data-slot="2">✦</div>
+        </div>
+        <div class="tarot-reveal" id="tarot-reveal" hidden></div>
+        <button type="button" class="btn-primary" id="tarot-go" disabled>Расшифровать</button>
+        <div class="interp" id="tarot-text" style="margin-top:14px"></div>
+      </div>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v9</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v10</p>
 </div>
 
 <script>
@@ -608,6 +637,56 @@ function mdLite(text) {
   const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   return esc.replace(/^#{1,3}\s+(.+)$/gm, "<b>$1</b>").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
 }
+
+/* ---------- Таро дня ---------- */
+let tarotSlot = null;
+
+document.getElementById("tarot-open").addEventListener("click", () => {
+  document.getElementById("tarot-flow").hidden = false;
+  document.getElementById("tarot-open").hidden = true;
+});
+
+document.querySelectorAll(".tarot-card").forEach((card) => {
+  card.addEventListener("click", () => {
+    document.querySelectorAll(".tarot-card").forEach((c) => c.classList.remove("selected"));
+    card.classList.add("selected");
+    tarotSlot = Number(card.dataset.slot);
+    document.getElementById("tarot-go").disabled = false;
+  });
+});
+
+document.getElementById("tarot-go").addEventListener("click", () => {
+  const question = document.getElementById("tarot-question").value.trim();
+  if (question.length < 3) {
+    document.getElementById("tarot-question").focus();
+    return;
+  }
+  const goBtn = document.getElementById("tarot-go");
+  goBtn.disabled = true;
+  goBtn.textContent = "Астра тасует…";
+  fetch(API_BASE + "/tarot", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ initData: tg ? tg.initData : "", question, slot: tarotSlot }),
+  })
+    .then(async (r) => {
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "fail");
+      const reveal = document.getElementById("tarot-reveal");
+      reveal.hidden = false;
+      reveal.innerHTML =
+        '<span class="emoji' + (data.reversed ? " flipped" : "") + '">' + data.emoji + "</span>" +
+        "<b>" + data.card + "</b>" + (data.reversed ? " (перевёрнутая)" : "");
+      document.getElementById("tarot-text").innerHTML = mdLite(data.interpretation);
+      document.querySelector(".tarot-cards").hidden = true;
+      document.getElementById("tarot-question").disabled = true;
+      goBtn.hidden = true;
+    })
+    .catch(() => {
+      goBtn.textContent = "Не вышло — попробуйте ещё раз";
+      goBtn.disabled = false;
+    });
+});
 </script>
 </body>
 </html>
