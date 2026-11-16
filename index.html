@@ -135,6 +135,14 @@
   }
   .profile-rows small { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
   .profile-rows span { font-size: 16px; }
+  #num-grid { margin-top: 8px; }
+  #num-grid > div {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 10px 2px; border-bottom: 1px solid rgba(255,255,255,.07);
+  }
+  #num-grid small { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+  #num-grid b { font-size: 18px; color: var(--gold, #d4af37); }
+  .report { margin-top: 14px; font-size: 15px; line-height: 1.55; white-space: pre-wrap; }
   button {
     flex: 1;
     padding: 15px;
@@ -298,7 +306,10 @@
   <!-- Нумерология: заглушка до реализации -->
   <div id="numerology-screen" hidden>
     <h1>Нумерология</h1>
-    <p class="subtitle">раздел в работе, скоро откроется</p>
+    <p class="subtitle">ваш код по дате и имени</p>
+    <div id="num-grid"></div>
+    <div class="nav"><button type="button" class="btn-primary" id="num-go">Расшифровать ✨</button></div>
+    <div id="num-result" class="report" hidden></div>
     <div class="nav"><button type="button" class="btn-ghost" data-home>← Назад</button></div>
   </div>
 
@@ -323,7 +334,7 @@
       <button type="button" class="btn-ghost" id="tarot-back" data-home>← Назад</button>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v13</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v14</p>
 </div>
 
 <script>
@@ -677,6 +688,17 @@ function showHome(data) {
   document.getElementById("p-date").textContent = (p.birth_date || "").split("-").reverse().join(".");
   document.getElementById("p-time").textContent = p.time_uncertain ? "не знаю точно (12:00)" : (p.birth_time || "—");
   document.getElementById("p-city").textContent = p.birth_city || "—";
+  const n = data.numerology || {};
+  const labels = [
+    ["life_path", "Жизненный путь"],
+    ["birth_day", "День рождения"],
+    ["expression", "Число выражения"],
+    ["personal_year", "Персональный год " + new Date().getFullYear()],
+  ];
+  document.getElementById("num-grid").innerHTML = labels
+    .filter(([k]) => n[k] != null)
+    .map(([k, label]) => `<div><small>${label}</small><b>${n[k]}</b></div>`)
+    .join("");
   showScreen("home");
 }
 
@@ -725,6 +747,35 @@ document.getElementById("edit-profile").addEventListener("click", () => {
 document.querySelectorAll("[data-home]").forEach((b) =>
   b.addEventListener("click", () => showScreen(lastData ? "home" : "form"))
 );
+
+/* ---------- Нумерология ---------- */
+document.getElementById("num-go").addEventListener("click", () => {
+  const btn = document.getElementById("num-go");
+  btn.disabled = true;
+  btn.textContent = "Астра считает…";
+  const ctrl = new AbortController();
+  const watchdog = setTimeout(() => ctrl.abort(), 45000);
+  fetch(API_BASE + "/numerology", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ initData: tg ? tg.initData : "" }),
+    signal: ctrl.signal,
+  })
+    .then(async (r) => {
+      clearTimeout(watchdog);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "fail");
+      const res = document.getElementById("num-result");
+      res.innerHTML = mdLite(data.interpretation);
+      res.hidden = false;
+      btn.hidden = true;
+    })
+    .catch(() => {
+      clearTimeout(watchdog);
+      btn.textContent = "Не вышло — попробуйте ещё раз";
+      btn.disabled = false;
+    });
+});
 
 function mdLite(text) {
   const esc = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
