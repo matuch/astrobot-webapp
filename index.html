@@ -349,7 +349,7 @@
       <button type="button" class="btn-ghost" id="tarot-back" data-home>← Назад</button>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v17</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v18</p>
 </div>
 
 <script>
@@ -771,7 +771,7 @@ document.getElementById("nav-day").addEventListener("click", () => {
   fetch(API_BASE + "/day", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ initData: tg ? tg.initData : "" }),
+    body: JSON.stringify({ initData: tg ? tg.initData : "", t: viewToken }),
     signal: ctrl.signal,
   })
     .then(async (r) => {
@@ -811,7 +811,7 @@ document.getElementById("num-go").addEventListener("click", () => {
   fetch(API_BASE + "/numerology", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ initData: tg ? tg.initData : "" }),
+    body: JSON.stringify({ initData: tg ? tg.initData : "", t: viewToken }),
     signal: ctrl.signal,
   })
     .then(async (r) => {
@@ -863,7 +863,7 @@ document.getElementById("tarot-go").addEventListener("click", () => {
   fetch(API_BASE + "/tarot", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ initData: tg ? tg.initData : "", question, slot: tarotSlot }),
+    body: JSON.stringify({ initData: tg ? tg.initData : "", t: viewToken, question, slot: tarotSlot }),
     signal: ctrl.signal,
   })
     .then(async (r) => {
