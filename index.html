@@ -250,6 +250,10 @@
       <input type="text" id="city" autocomplete="off" placeholder="Начните вводить город…" maxlength="100">
       <div class="suggestions" id="suggestions"></div>
       <p class="hint" id="hint-city"></p>
+      <label style="display:flex;gap:8px;font-size:13px;color:var(--muted);margin-top:14px;align-items:flex-start">
+        <input type="checkbox" id="consent" style="width:auto;margin-top:2px">
+        <span>Соглашаюсь с <a href="privacy.html" target="_blank" style="color:#8ab4ff">политикой обработки персональных данных</a> и даю <a href="consent.html" target="_blank" style="color:#8ab4ff">согласие на обработку моих персональных данных</a></span>
+      </label>
     </section>
 
     <div class="nav">
@@ -335,7 +339,7 @@
       <button type="button" class="btn-ghost" id="tarot-back" data-home>← Назад</button>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v15</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v16</p>
 </div>
 
 <script>
@@ -470,6 +474,10 @@ function validateStep(n) {
   if (n === 3) {
     const ok = cityEl.value.trim().length >= 2;
     setHint("hint-city", ok ? "" : "Введите город рождения.", !ok);
+    if (ok && !document.getElementById("consent").checked) {
+      setHint("hint-city", "Подтвердите согласие на обработку персональных данных.", true);
+      return false;
+    }
     return ok;
   }
   return true;
