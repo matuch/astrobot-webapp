@@ -238,7 +238,7 @@
       <div class="interp" id="r-text"></div>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v6</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v7</p>
 </div>
 
 <script>
@@ -394,7 +394,7 @@ timeUnknownEl.addEventListener("change", () => {
 });
 
 /* ---------- Автокомплит городов (GeoNames, опционально) ---------- */
-const GEONAMES_USER = new URLSearchParams(location.search).get("gn") || "";
+const GEONAMES_USER = new URLSearchParams(location.search).get("gn") || "matuch"; // ponytail: юзернейм публичный, запечён как дефолт
 let suggTimer = null;
 let suggAbort = null;
 
