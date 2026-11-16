@@ -211,9 +211,10 @@
   <form id="wizard" novalidate>
     <!-- Шаг 1: имя -->
     <section class="step visible" data-step="0">
-      <label class="field-label" for="name"><span class="planet">♀</span>Ваше имя</label>
-      <input type="text" id="name" autocomplete="name" placeholder="Например, Анна" maxlength="60">
+      <label class="field-label" for="name"><span class="planet">♀</span>Ваше ФИО</label>
+      <input type="text" id="name" autocomplete="name" placeholder="Например, Анна Сергеевна Иванова" maxlength="60">
       <p class="hint" id="hint-name"></p>
+      <p class="hint">Полное ФИО при рождении нужно для точной нумерологии</p>
     </section>
 
     <!-- Шаг 2: дата рождения -->
@@ -290,7 +291,7 @@
     <h1 id="home-name"></h1>
     <p class="subtitle">ваш профиль</p>
     <div class="profile-rows">
-      <div><small>Имя</small><span id="p-name"></span></div>
+      <div><small>ФИО</small><span id="p-name"></span></div>
       <div><small>Дата рождения</small><span id="p-date"></span></div>
       <div><small>Время</small><span id="p-time"></span></div>
       <div><small>Город</small><span id="p-city"></span></div>
@@ -334,7 +335,7 @@
       <button type="button" class="btn-ghost" id="tarot-back" data-home>← Назад</button>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v14</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v15</p>
 </div>
 
 <script>
