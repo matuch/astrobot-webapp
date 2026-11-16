@@ -238,7 +238,7 @@
       <div class="interp" id="r-text"></div>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v7</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v8</p>
 </div>
 
 <script>
@@ -484,11 +484,30 @@ function submit() {
   const json = JSON.stringify(payload);
 
   if (isTelegram) {
-    if (tg && tg.sendData) {
-      tg.sendData(json); // Telegram сам закроет мини-приложение
-    } else {
-      showError("Не удалось связаться с Telegram. Закройте анкету и откройте заново через /anketa.");
+    // ponytail: submit идёт в API, а не tg.sendData — sendData работает только из reply-кнопки,
+    // а анкету могут открыть и из menu-кнопки
+    if (tg && tg.initData) {
+      nextBtn.disabled = true;
+      fetch(API_BASE + "/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ initData: tg.initData, profile: payload }),
+      })
+        .then(async (r) => {
+          if (r.ok) { showDone(); if (tg.close) tg.close(); return; }
+          const data = await r.json().catch(() => ({}));
+          showError(data.error === "city_not_found"
+            ? "Не нашли такой город — проверьте написание."
+            : "Не удалось отправить. Попробуйте ещё раз.");
+          nextBtn.disabled = false;
+        })
+        .catch(() => {
+          showError("Нет связи с сервером. Попробуйте ещё раз.");
+          nextBtn.disabled = false;
+        });
+      return;
     }
+    showError("Не удалось связаться с Telegram. Закройте анкету и откройте заново через /anketa.");
     return;
   }
   if (maxApp) {
@@ -517,28 +536,53 @@ const API_BASE = "https://api.naturalastro.ru:8443";
 const viewToken = new URLSearchParams(location.search).get("t");
 
 if (viewToken) {
-  document.getElementById("wizard").hidden = true;
-  document.getElementById("dots").hidden = true;
-  document.querySelector(".subtitle").hidden = true;
-  document.querySelector("h1").hidden = true;
-  const resultEl = document.getElementById("result");
-  resultEl.hidden = false;
+  showResultMode();
   fetch(API_BASE + "/view?t=" + encodeURIComponent(viewToken))
     .then(async (r) => {
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || "fail");
-      document.getElementById("result-name").textContent = data.name || "Натальная карта";
-      document.getElementById("r-sun").textContent = data.big_three.sun;
-      document.getElementById("r-moon").textContent = data.big_three.moon;
-      document.getElementById("r-asc").textContent = data.big_three.ascendant;
-      document.getElementById("r-text").innerHTML = mdLite(data.interpretation);
-      document.getElementById("result-status").hidden = true;
-      document.getElementById("result-content").hidden = false;
+      renderResult(data);
     })
     .catch(() => {
       document.getElementById("result-status").textContent =
         "Не удалось загрузить карту. Закройте и откройте снова из чата с ботом.";
     });
+} else if (isTelegram && tg && tg.initData) {
+  // ponytail: menu-кнопка/повторный заход — по initData узнаём юзера: есть профиль → сразу результат
+  fetch(API_BASE + "/me", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ initData: tg.initData }),
+  })
+    .then(async (r) => {
+      if (r.status === 404) {
+        const firstName = tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.first_name;
+        if (firstName) nameEl.value = firstName;
+        return; // профиля нет — остаёмся на форме
+      }
+      if (!r.ok) return;
+      renderResult(await r.json());
+    })
+    .catch(() => {});
+}
+
+function showResultMode() {
+  document.getElementById("wizard").hidden = true;
+  document.getElementById("dots").hidden = true;
+  document.querySelector(".subtitle").hidden = true;
+  document.querySelector("h1").hidden = true;
+  document.getElementById("result").hidden = false;
+}
+
+function renderResult(data) {
+  showResultMode();
+  document.getElementById("result-name").textContent = data.name || "Натальная карта";
+  document.getElementById("r-sun").textContent = data.big_three.sun;
+  document.getElementById("r-moon").textContent = data.big_three.moon;
+  document.getElementById("r-asc").textContent = data.big_three.ascendant;
+  document.getElementById("r-text").innerHTML = mdLite(data.interpretation);
+  document.getElementById("result-status").hidden = true;
+  document.getElementById("result-content").hidden = false;
 }
 
 function mdLite(text) {
