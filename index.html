@@ -258,21 +258,32 @@
         <pre id="r-report"></pre>
       </details>
 
-      <!-- Таро дня -->
       <button type="button" class="btn-primary" id="tarot-open" style="margin-top:20px">🃏 Расклад таро на день</button>
-      <div id="tarot-flow" hidden>
-        <label class="field-label" style="margin-top:18px" for="tarot-question">Ваш вопрос на сегодня</label>
-        <input type="text" id="tarot-question" maxlength="500" placeholder="Например: что важно учесть сегодня на работе?">
-        <p class="hint">Выберите одну карту:</p>
-        <div class="tarot-cards">
-          <div class="tarot-card" data-slot="0">✦</div>
-          <div class="tarot-card" data-slot="1">✦</div>
-          <div class="tarot-card" data-slot="2">✦</div>
-        </div>
-        <div class="tarot-reveal" id="tarot-reveal" hidden></div>
-        <button type="button" class="btn-primary" id="tarot-go" disabled>Расшифровать</button>
-        <div class="interp" id="tarot-text" style="margin-top:14px"></div>
+    </div>
+  </div>
+
+  <!-- Отдельный экран: Таро дня -->
+  <div id="tarot-screen" hidden>
+    <div class="glyph">🃏</div>
+    <h1>Таро дня</h1>
+    <p class="subtitle">вопрос → карта → расшифровка</p>
+
+    <div id="tarot-flow">
+      <label class="field-label" for="tarot-question">1. Ваш вопрос на сегодня</label>
+      <input type="text" id="tarot-question" maxlength="500" placeholder="Например: что важно учесть сегодня на работе?">
+      <p class="hint">2. Выберите одну карту:</p>
+      <div class="tarot-cards">
+        <div class="tarot-card" data-slot="0">✦</div>
+        <div class="tarot-card" data-slot="1">✦</div>
+        <div class="tarot-card" data-slot="2">✦</div>
       </div>
+      <div class="tarot-reveal" id="tarot-reveal" hidden></div>
+      <button type="button" class="btn-primary" id="tarot-go" disabled>3. Расшифровать</button>
+      <div class="interp" id="tarot-text" style="margin-top:14px"></div>
+    </div>
+
+    <div class="nav">
+      <button type="button" class="btn-ghost" id="tarot-back">← К карте</button>
     </div>
   </div>
   <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v10</p>
@@ -642,8 +653,13 @@ function mdLite(text) {
 let tarotSlot = null;
 
 document.getElementById("tarot-open").addEventListener("click", () => {
-  document.getElementById("tarot-flow").hidden = false;
-  document.getElementById("tarot-open").hidden = true;
+  document.getElementById("result").hidden = true;
+  document.getElementById("tarot-screen").hidden = false;
+});
+
+document.getElementById("tarot-back").addEventListener("click", () => {
+  document.getElementById("tarot-screen").hidden = true;
+  document.getElementById("result").hidden = false;
 });
 
 document.querySelectorAll(".tarot-card").forEach((card) => {
