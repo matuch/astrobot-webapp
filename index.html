@@ -135,13 +135,13 @@
   }
   .profile-rows small { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
   .profile-rows span { font-size: 16px; }
-  #num-grid { margin-top: 8px; }
-  #num-grid > div {
+  #num-grid, #day-facts { margin-top: 8px; }
+  #num-grid > div, #day-facts > div {
     display: flex; justify-content: space-between; align-items: baseline;
     padding: 10px 2px; border-bottom: 1px solid rgba(255,255,255,.07);
   }
-  #num-grid small { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
-  #num-grid b { font-size: 18px; color: var(--gold, #d4af37); }
+  #num-grid small, #day-facts small { color: var(--muted); font-size: 12px; letter-spacing: 1px; }
+  #num-grid b, #day-facts b { font-size: 18px; color: var(--gold, #d4af37); }
   .report { margin-top: 14px; font-size: 15px; line-height: 1.55; white-space: pre-wrap; }
   button {
     flex: 1;
@@ -302,10 +302,20 @@
     </div>
     <button type="button" class="btn-ghost btn-wide" id="edit-profile">Редактировать данные</button>
     <div class="home-nav">
+      <button type="button" class="btn-primary" id="nav-day">📅 Мой день</button>
       <button type="button" class="btn-primary" id="nav-astro">🔮 Астрология</button>
       <button type="button" class="btn-primary" id="nav-num">🔢 Нумерология</button>
       <button type="button" class="btn-primary" id="nav-tarot">🃏 Карты Таро</button>
     </div>
+  </div>
+
+  <!-- Дайджест дня -->
+  <div id="day-screen" hidden>
+    <h1>Мой день</h1>
+    <p class="subtitle" id="day-date"></p>
+    <div id="day-facts"></div>
+    <div id="day-text" class="report" hidden></div>
+    <div class="nav"><button type="button" class="btn-ghost" data-home>← Назад</button></div>
   </div>
 
   <!-- Нумерология: заглушка до реализации -->
@@ -339,7 +349,7 @@
       <button type="button" class="btn-ghost" id="tarot-back" data-home>← Назад</button>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v16</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v17</p>
 </div>
 
 <script>
@@ -681,6 +691,7 @@ function showScreen(name) {
     astro: ["result"],
     tarot: ["tarot-screen"],
     num: ["numerology-screen"],
+    day: ["day-screen"],
     done: ["done"],
   };
   for (const ids of Object.values(groups)) ids.forEach((id) => (document.getElementById(id).hidden = true));
@@ -748,6 +759,39 @@ function prefillForm(p) {
 document.getElementById("nav-astro").addEventListener("click", () => lastData && renderResult(lastData));
 document.getElementById("nav-tarot").addEventListener("click", () => showScreen("tarot"));
 document.getElementById("nav-num").addEventListener("click", () => showScreen("num"));
+
+/* ---------- Мой день ---------- */
+let dayLoaded = false;
+document.getElementById("nav-day").addEventListener("click", () => {
+  showScreen("day");
+  if (dayLoaded) return;
+  const facts = document.getElementById("day-facts");
+  const ctrl = new AbortController();
+  const watchdog = setTimeout(() => ctrl.abort(), 45000);
+  fetch(API_BASE + "/day", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ initData: tg ? tg.initData : "" }),
+    signal: ctrl.signal,
+  })
+    .then(async (r) => {
+      clearTimeout(watchdog);
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "fail");
+      document.getElementById("day-date").textContent = data.date;
+      facts.innerHTML =
+        `<div><small>Личный день</small><b>${data.personal_day}</b></div>` +
+        `<div><small>Луна сегодня</small><b>${data.moon_sign}</b></div>`;
+      const t = document.getElementById("day-text");
+      t.innerHTML = mdLite(data.text);
+      t.hidden = false;
+      dayLoaded = true;
+    })
+    .catch(() => {
+      clearTimeout(watchdog);
+      facts.innerHTML = `<div><small>Не вышло загрузить — вернитесь позже</small></div>`;
+    });
+});
 document.getElementById("edit-profile").addEventListener("click", () => {
   prefillForm(lastData && lastData.profile);
   showStep(0);
