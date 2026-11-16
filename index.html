@@ -164,7 +164,11 @@
   .tarot-card.selected { border-color: var(--gold); color: var(--gold); box-shadow: 0 0 18px var(--gold-dim); transform: translateY(-4px); }
   .tarot-reveal { text-align: center; margin: 12px 0; font-size: 18px; }
   .tarot-reveal .emoji { font-size: 44px; display: block; }
-  .tarot-reveal .flipped { display: inline-block; transform: scaleY(-1); }
+  .tarot-img {
+    display: block; margin: 0 auto 8px; max-width: 150px; border-radius: 10px;
+    border: 1px solid rgba(212,175,55,.5); box-shadow: 0 8px 24px rgba(0,0,0,.5);
+  }
+  .tarot-img.flipped { transform: scaleY(-1); }
   [hidden] { display: none !important; } /* вебвью iOS иногда игнорит hidden без этого */
 
   .done { text-align: center; padding: 30px 0 10px; }
@@ -286,7 +290,7 @@
       <button type="button" class="btn-ghost" id="tarot-back">← К карте</button>
     </div>
   </div>
-  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v10</p>
+  <p style="text-align:center;font-size:11px;color:#9a94b8;margin-top:14px;">v11</p>
 </div>
 
 <script>
@@ -691,7 +695,7 @@ document.getElementById("tarot-go").addEventListener("click", () => {
       const reveal = document.getElementById("tarot-reveal");
       reveal.hidden = false;
       reveal.innerHTML =
-        '<span class="emoji' + (data.reversed ? " flipped" : "") + '">' + data.emoji + "</span>" +
+        '<img class="tarot-img' + (data.reversed ? " flipped" : "") + '" src="' + data.image + '" alt="' + data.card + '">' +
         "<b>" + data.card + "</b>" + (data.reversed ? " (перевёрнутая)" : "");
       document.getElementById("tarot-text").innerHTML = mdLite(data.interpretation);
       document.querySelector(".tarot-cards").hidden = true;
